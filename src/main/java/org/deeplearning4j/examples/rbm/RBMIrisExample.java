@@ -8,15 +8,12 @@ import org.deeplearning4j.nn.api.OptimizationAlgorithm;
 import org.deeplearning4j.nn.conf.GradientNormalization;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.Updater;
-import org.deeplearning4j.nn.conf.distribution.UniformDistribution;
 import org.deeplearning4j.nn.conf.layers.RBM;
 import org.deeplearning4j.nn.conf.layers.RBM.*;
 import org.deeplearning4j.nn.layers.factory.LayerFactories;
 import org.deeplearning4j.nn.params.DefaultParamInitializer;
 import org.deeplearning4j.nn.weights.WeightInit;
-import org.deeplearning4j.optimize.api.IterationListener;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
-import org.deeplearning4j.plot.NeuralNetPlotter;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.factory.Nd4j;
@@ -25,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Arrays;
 
 
 /**
@@ -48,7 +44,7 @@ public class RBMIrisExample {
         int batchSize = 150;
         int iterations = 100;
         int seed = 123;
-        int listenerFreq = 1;
+        int listenerFreq = iterations/2;
 
         log.info("Load data....");
         DataSetIterator iter = new IrisDataSetIterator(batchSize, numSamples);
@@ -67,11 +63,12 @@ public class RBMIrisExample {
                         .nOut(outputNum) // Output nodes
                         .activation("relu") // Activation function type
                         .weightInit(WeightInit.RELU) // Weight initialization
-                        .lossFunction(LossFunctions.LossFunction.XENT).k(3)
+                        .lossFunction(LossFunctions.LossFunction.RECONSTRUCTION_CROSSENTROPY).k(3)
                         .hiddenUnit(HiddenUnit.RECTIFIED).visibleUnit(VisibleUnit.GAUSSIAN)
                         .updater(Updater.ADAGRAD).gradientNormalization(GradientNormalization.ClipL2PerLayer)
                         .build())
                 .seed(seed) // Locks in weight initialization for tuning
+                .iterations(iterations)
                 .learningRate(1e-3) // Backprop step size
                 // Speed of modifying learning rate
                 .optimizationAlgo(OptimizationAlgorithm.LBFGS)
@@ -83,9 +80,13 @@ public class RBMIrisExample {
         log.info("Evaluate weights....");
         INDArray w = model.getParam(DefaultParamInitializer.WEIGHT_KEY);
         log.info("Weights: " + w);
-
+        log.info("Scaling the dataset");
+        iris.scale();
         log.info("Train model....");
-        model.fit(iris.getFeatureMatrix());
+        for(int i = 0; i < 20; i++) {
+            log.info("Epoch "+i+":");
+            model.fit(iris.getFeatureMatrix());
+        }
 
     }
 

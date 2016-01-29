@@ -1,10 +1,13 @@
 package org.deeplearning4j.examples.word2vec;
 
+import org.canova.api.util.ClassPathResource;
 import org.deeplearning4j.models.embeddings.WeightLookupTable;
 import org.deeplearning4j.models.embeddings.inmemory.InMemoryLookupTable;
 import org.deeplearning4j.models.embeddings.loader.WordVectorSerializer;
+import org.deeplearning4j.models.word2vec.VocabWord;
 import org.deeplearning4j.models.word2vec.Word2Vec;
 import org.deeplearning4j.models.word2vec.wordstore.inmemory.InMemoryLookupCache;
+import org.deeplearning4j.text.sentenceiterator.BasicLineIterator;
 import org.deeplearning4j.text.sentenceiterator.SentenceIterator;
 import org.deeplearning4j.text.sentenceiterator.UimaSentenceIterator;
 import org.deeplearning4j.text.tokenization.tokenizer.preprocessor.CommonPreprocessor;
@@ -12,7 +15,6 @@ import org.deeplearning4j.text.tokenization.tokenizerfactory.DefaultTokenizerFac
 import org.deeplearning4j.text.tokenization.tokenizerfactory.TokenizerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.ClassPathResource;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -37,13 +39,15 @@ public class Word2VecUptrainingExample {
 
         log.info("Load & Vectorize Sentences....");
         // Strip white space before and after for each line
-        SentenceIterator iter = UimaSentenceIterator.createWithPath(filePath);
+        SentenceIterator iter = new BasicLineIterator(filePath);
         // Split on white spaces in the line to get words
         TokenizerFactory t = new DefaultTokenizerFactory();
         t.setTokenPreProcessor(new CommonPreprocessor());
 
+        // manual creation of VocabCache and WeightLookupTable usually isn't necessary
+        // but in this case we'll need them
         InMemoryLookupCache cache = new InMemoryLookupCache();
-        WeightLookupTable table = new InMemoryLookupTable.Builder()
+        WeightLookupTable<VocabWord> table = new InMemoryLookupTable.Builder<VocabWord>()
                 .vectorLength(100)
                 .useAdaGrad(false)
                 .cache(cache)
@@ -55,12 +59,12 @@ public class Word2VecUptrainingExample {
                 .iterations(1)
                 .epochs(1)
                 .layerSize(100)
-                .lookupTable(table)
-                .vocabCache(cache)
                 .seed(42)
                 .windowSize(5)
                 .iterate(iter)
                 .tokenizerFactory(t)
+                .lookupTable(table)
+                .vocabCache(cache)
                 .build();
 
         log.info("Fitting Word2Vec model....");
@@ -84,7 +88,7 @@ public class Word2VecUptrainingExample {
         /*
             PLEASE NOTE: after model is restored, it's still required to set SentenceIterator and TokenizerFactory, if you're going to train this model
          */
-        SentenceIterator iterator = UimaSentenceIterator.createWithPath(filePath);
+        SentenceIterator iterator = new BasicLineIterator(filePath);
         TokenizerFactory tokenizerFactory = new DefaultTokenizerFactory();
         tokenizerFactory.setTokenPreProcessor(new CommonPreprocessor());
 
